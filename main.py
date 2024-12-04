@@ -1,133 +1,153 @@
-from deep_translator import GoogleTranslator
-import requests as re
+import repository
 import time
+from os import system, name
+def clear():
+    # for windows
+    if name == 'nt':
+        _ = system('cls')
+    # for mac and linux(here, os.name is 'posix')
+    else:
+        _ = system('clear')
 
+ad_saved_list = {}
 
-URL = 'https://api.adviceslip.com/advice'
-ad_list = {}
+#     OPTION 1 - Buscar conselhos
+def search_for_advice(qnt):
+    for i in range(qnt):
+        id_ad, txt_ad = repository.get_translated_advice()
+        print(f"\nConselho recebido: {txt_ad}\n")
+        salvar = input("Deseja salvar esse conselho? (s/n): ").lower()
+        if salvar == "s":
+            save_ad(id_ad, txt_ad)
 
-def ad_api():
+# adciona na lista da memoria
+def save_ad(id_ad, txt_ad):
     try:
-        result = re.get(URL)
-        id_ad = result.json()['slip']['id']
-        ad_txt = result.json()['slip']['advice']
-        return id_ad ,ad_txt
-
-
-    except Exception as e:
-        print(f'Error {e}')
-
-
-
-def list_ad(id_ad, ad_txt):
-    try:
-        if id_ad not in ad_list:
-            ad_list[id_ad] = ad_txt
+        if id_ad not in ad_saved_list:
+            ad_saved_list[id_ad] = txt_ad
             print("Conselho salvo com sucesso!")
         else:
             print("Conselho já salvo.")
-
     except Exception as erro:
         print(f'Erro encontrado: {erro}')
 
 
-
-def show_ad():
-    if ad_list:
-        print("Conselhos salvos:")
-        for id_ad, ad_txt in (ad_list.items()):
-            print(f"ID: {id_ad} - Conselho: {ad_txt}")
+#    OPTION 2 Mostrar conselhos
+def show_saved_ads(choice):
+    if choice == 1:
+        show_ad_from_list()
+    elif choice == 2:
+        show_ad_from_file()
     else:
-        print("Nenhum conselho salvo. \n")
+        print("Numero invalido!")
 
-def save_txt():
-    with open('advice.txt', 'a', encoding='UTF-8') as arquivo:
-        for id_ad, ad_txt in (ad_list.items()):
-            arquivo.write(f"ID: {id_ad} - Conselho: {ad_txt} \n")
+# mostra na lista da memoria
+def show_ad_from_list():
+    if ad_saved_list:
+        print("\nConselhos salvos:\n")
+        print_ads(ad_saved_list.items())
+    else:
+        print("\nNenhum conselho salvo.\n")
 
-def show_ad_from_txt():
-    with open('advice.txt', 'r+', encoding='UTF-8') as arquivo:
-        lines = arquivo.readlines()
-        for i in lines:
-            print(f'{i.strip()}')
-            time.sleep(1)
-
-
-def translate_ad_from_txt():
-    with open('advice.txt', 'r+', encoding='UTF-8') as arquivo:
-        shad = arquivo.readlines()
-        for i in shad:
-            frase = i.strip()
-            traducao = GoogleTranslator(source='auto', target='portuguese').translate(frase)
-            print(traducao)
-            time.sleep(1)
-
-
-
-def translate_ad():
+# pego do arquivo e printa
+def show_ad_from_file():
     try:
-        for id_ad, ad_txt in (ad_list.items()):
-            traduzido = GoogleTranslator(source='en', target='pt').translate(ad_txt)
-            print(f'Tradução:  Id: {id_ad} - {traduzido}')
+        ads = repository.read_advice_from_file()
+        if ads:
+            print("\nConselhos salvos:\n")
+            print_ads(ads.items())
+        else:
+            print("\nNenhum conselho salvo.\n")
+    except Exception as erro:
+        print(f'Erro encontrado: {erro}')
+
+def print_ads(ads):
+    for id_ad, txt_ad in ads:
+        print(f"ID: {id_ad} - Conselho: {txt_ad}")
+
+#   OPTION 3 - Traduzir conselhos
+def show_translated_ads(choice):
+    if choice == 1:
+        translate_ad_from_list()
+    elif choice == 2:
+        translate_ad_from_file()
+    else:
+        print("Numero invalido!")
+
+# Pega o que esta na memoria e traduz
+def translate_ad_from_list():
+    if not ad_saved_list:
+        return print("\nNenhum conselho salvo\n")
+    traduzidos = repository.translate_advice(ad_saved_list.items())
+    for tras_txt in traduzidos:
+        print(tras_txt)
+
+# pega do arquivo e traduz
+def translate_ad_from_file():
+    try:
+        from_file = repository.read_advice_from_file()
+        if not from_file:
+            return print("\nNenhum conselho salvo\n")
+
+        result = repository.translate_advice(from_file.items())
+        for adv_trans in result:
+            print(adv_trans)
     except Exception as e:
-        print("Erro ao traduzir:", e)
-        return None
+        print(f'Erro encontrado: {e}')
 
 
+#   OPTION 4 - Guardar conselhos em arquivo
+def save_ads_to_file():
+    if not ad_saved_list:
+        return print("\nNenhum conselho salvo na lista para guardar. \n")
+    try:
+        repository.write_advice_to_file(ad_saved_list.items())
+        print(f'Conselhos guardados no arquivo com sucesso')
+        ad_saved_list.clear()
+    except Exception as e:
+        print(f'Erro ao salvar arquivo: {e}')
 
 if __name__ == '__main__':
+    print('\n========> Inicio do Programa <========\n')
 
-    while True:
-        print("\nMenu:")
-        print("1. Buscar conselho")
-        print("2. Mostrar conselhos salvos")
-        print("3. Traduzir conselho salvo")
-        print("4. Salvar conselhos em arquivo de texto")
-        print("5. Sair")
-        opcao = input("Escolha uma opção: ")
+    opcao = -1
+    while opcao != 0:
+        clear()
+        print("\n Menu:")
+        print("1. Buscar conselhos")
+        print("2. Mostrar conselhos")
+        print("3. Traduzir conselhos")
+        print("4. Guardar conselhos em arquivo")
+        print("0. Sair")
+        opcao = int(input("\n Escolha uma opção: "))
 
-        if opcao == "1":
-            id_ad, ad_txt = ad_api()
-            if id_ad and ad_txt:
+        match opcao:
+            case 1:
+                print('\n==== Buscar conselho ====')
                 qtd = int(input('Quantos conselhos deseja receber? :  '))
-                for i in range(qtd):
-                    print(f"Conselho recebido: {ad_txt}")
-                    salvar = input("Deseja salvar esse conselho? (s/n): \n").lower()
-                    if salvar == "s":
-                        list_ad(id_ad, ad_txt)
-                    id_ad, ad_txt = ad_api()
-
-
-
-        elif opcao == "2":
-            escolha = int(input("Gostaria que seja mostrado os conselhos quem estão: \n 1- no Programa  \n 2- no Arquivo de texto? \n"))
-            if escolha == 1:
-                show_ad()
-            elif escolha == 2:
-                show_ad_from_txt()
-            else:
-                print("Numero invalido!")
-
-
-
-        elif opcao == "3":
-            op = int(input('Gostaria traduzir os conselhos da onde? : \n 1- no Programa  \n 2- no Arquivo de texto? \n'))
-            if op == 1:
-                show_ad()
-                print('\n ~~~~~~~~~~~~ traduzido ~~~~~~~~~~ \n')
-                translate_ad()
-            elif op == 2:
-                translate_ad_from_txt()
-            else:
-                print('Escolha inválida')
-
-
-        elif opcao == "4":
-            save_txt()
-            print('Conselhos salvos com sucesso no arquivo "advices.txt" !')
-
-        elif opcao == "5":
-            print("Saindo do programa.")
-            break
-        else:
-            print("Opção inválida!")
+                search_for_advice(qtd)
+                print('-------------------------')
+            case 2:
+                print('\n==== Mostrar conselhos salvos ====')
+                escolha = int(input(
+                    "Gostaria que seja mostrado os conselhos que estão: "
+                    "\n 1- Salvos no Programa  "
+                    "\n 2- Guardados no Arquivo? \n"))
+                show_saved_ads(escolha)
+                print('----------------------------------')
+            case 3:
+                print('\n==== Traduzir conselho salvo ====')
+                escolha = int(input(
+                    "Gostaria que seja traduzido os conselhos que estão: "
+                    "\n 1- Salvos no Programa  "
+                    "\n 2- Guardados no Arquivo? \n"))
+                show_translated_ads(escolha)
+                print('---------------------------------')
+            case 4:
+                print('\n==== Salvar conselhos em arquivo de texto ====')
+                save_ads_to_file()
+                print('----------------------------------------------')
+            case 0:
+                print('\n========> Fim do Programa <========\n')
+            case _:
+                print('Opção invalida')
